@@ -1,0 +1,78 @@
+## Canadian Electricity Generation by Source and Year
+
+#### [Dexter Dai](https://github.com/Yeaaahhhhh)
+
+I chose this chart because
+
+(1) it clearly shows how much electricity is generated from different energy sources over time. Through a live look into how Canada is generating [renewable and non-renewable energy](https://www.cer-rec.gc.ca/open/energy/electricity-generation-dataset.csv) at any moment, both those watching and people in positions of authority come to possess important understanding about the nation's movement forward on its management of significant long-term concerns for sustainability and influence on Earth's climate.
+(2) The chart also serves as a tool for policymakers and businesses to make decisions about energy use and to assess progress toward renewable energy goals. The chart's impact lies in its ability to highlight trends in energy production. For instance, should the proportion of green bars grow over the passage of time, symbolizing a rising portion of energy coming from clean sources like wind and sunlight, one might conclude the movement towards more eco-friendly power is progressing in a desirable way.
+(3) In future versions of this chart, it is expected to focus on the changing energy mix: the shift towards more sustainable energy sources compared to fossil fuels such as coal and natural gas.
+
+```{r packages-data,echo=F,output=F, warning=FALSE,include=F}
+#load your packages quietly
+library(kableExtra)
+library(readxl)
+library(janitor)
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(viridis)
+
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+
+```{r,out.width="95%",dpi=300,fig.align="center",echo=T,output=F, warning=FALSE,include=T,message=F,fig.width=8, fig.height=5}
+#use this for quiet code
+if(!file.exists("assignment_3_projections.csv"))
+    download.file(url = "https://www.cer-rec.gc.ca/open/energy/electricity-generation-dataset.csv",destfile = "electricity-generation-dataset.csv",mode="wb")
+data <- read_csv("electricity-generation-dataset.csv")
+
+# Convert data from GW.h to TWh
+data <- data %>%
+  mutate(Data_TWh = Data / 1000) %>%
+  select(-Data, -Unit)  # Remove the old Data column and Unit column
+
+# Transform the data into a long format suitable for ggplot2
+data_long <- data %>%
+  gather(key = "Metric", value = "Value", -Region, -Source, -Year)
+
+custom_theme <- theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    axis.ticks.x = element_line(color = "black"),
+    axis.ticks.y = element_line(color = "black"))
+
+# Create the plot
+plot <- ggplot(data_long, aes(x = as.factor(Year), y = Value, fill = Source)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  scale_y_continuous(expand = c(0, 0),breaks = seq(0, max(1500, na.rm = TRUE), by = 200)) +
+  labs(
+    title = "Canadian Electricity Generation by Source and Year",
+    x = "",
+    y = "Electricity Generation (TWh)",
+    fill = ""
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  ) + custom_theme
+
+# Print the plot
+print(plot)
+
+
+
+```
+
+
+
+
+I’m in my last semester here at the UofA, completing my undergrad degree in Computing Science. I currently live in Edmonton. I like play basketball, football, rugby, boxing, and high jump. After this semester, I am going to go to Paris Olympics and watch track and field events in 2024. I like sports, coding, programming (especially optimization/speed up).
