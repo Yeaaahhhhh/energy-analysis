@@ -1,0 +1,295 @@
+---
+title: "Econ 366, Data Assignment 2"
+author: "Dexter Dai"
+editor: source
+---
+
+
+
+```{r chunks,echo=T,output=F, warning=FALSE,include=FALSE}
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      include=T)
+# include all your code, but not warnings or loading messages in your output
+```
+
+
+```{r packages-data,echo=T,output=F, warning=FALSE,include=T}
+
+
+#load your packages
+library(kableExtra)
+library(readxl)
+library(janitor)
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(viridis)
+```
+
+
+## Downloading the data
+
+```{r read data}
+#your code here
+if(!file.exists("enbridge-mainline-throughput-and-capacity.csv"))
+    download.file(url = "https://www.cer-rec.gc.ca/open/energy/throughput-capacity/enbridge-mainline-throughput-and-capacity.csv",destfile = "enbridge-mainline-throughput-and-capacity.csv",mode="wb")
+enb_data<-read.csv("enbridge-mainline-throughput-and-capacity.csv")
+```
+
+## Deliverable 1 
+
+```{r deliverable_1}
+enb_data <- clean_names(enb_data)
+
+# Filter and process data
+data_filtered <- enb_data %>%
+  filter(key_point == "ex-Gretna") %>%
+  mutate(date = make_date(year, month)) %>%
+  mutate(pair = paste(product, "(", trade_type, ")", sep = ""))
+
+# Create a dataset for available capacity
+enb_capacity <- data_filtered %>%
+  group_by(date) %>%
+  summarize(capacity = mean(available_capacity_1000_m3_d, na.rm = T))
+
+# Plot
+plot <- ggplot() +
+  geom_area(data = data_filtered, aes(x = date, y = throughput_1000_m3_d, fill = pair)) +
+  geom_line(data = enb_capacity, aes(x = date, y = capacity, color = "Available Capacity"), linewidth = .65, lty = "21") +
+  scale_y_continuous("Shipments (Monthly, Thousands of Cubic Metres per Day)", expand = c(0, 0),
+                     sec.axis = sec_axis(trans = ~.*1/.16, name = "Shipments (Monthly, Thousands of Barrels per Day)")) +
+  scale_x_date(
+    breaks = seq(as.Date("2008-01-01"), as.Date("2023-07-01"), by = "2 years"),
+    labels = scales::date_format("%b %Y")
+  ) +
+  labs(title = "Enbridge Canadian Mainline Shipments by Product") +
+  theme_minimal() +
+  scale_color_manual("", values = c("black"))+
+  theme(legend.position = "bottom")
+
+
+print(plot)
+
+
+```
+
+## Deliverable 2 
+
+
+```{r, out.width="95%",dpi=300,fig.align="center"}
+#your code here (I set it up to make a nice image for you)
+if(!file.exists("keystone-throughput-and-capacity.csv"))
+    download.file(url = "https://www.cer-rec.gc.ca/open/energy/throughput-capacity/keystone-throughput-and-capacity.csv",destfile = "keystone-throughput-and-capacity.csv",mode="wb")
+
+key_data<-read.csv("keystone-throughput-and-capacity.csv")%>%
+  clean_names()
+
+# Filter data for Domestic Heavy and Domestic Light
+data_filtered <- key_data %>%
+  filter(product %in% c("domestic heavy", "domestic light")) %>%
+  mutate(date = as.Date(paste(year, month, "01", sep = "-"), format = "%Y-%m-%d"))
+
+# Create the plot
+plot <- ggplot(data_filtered, aes(x = date, y = throughput_1000_m3_d, fill = product)) +
+  geom_area(position = "stack") +
+  scale_fill_manual(values = c("domestic heavy" = "darkblue", "domestic light" = "darkgrey")) +
+  scale_y_continuous(name = "Shipments (Monthly, Thousands of Cubic Metres per Day)", limits = c(0, 100)) +
+  labs(title = "Keystone Pipeline Shipments by Product") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  scale_x_date(
+    breaks = seq(as.Date("2010-01-01"), max(data_filtered$date), by = "2 years"),
+    labels = scales::date_format("%b \n%Y")
+  ) +
+  scale_y_continuous(
+    name = "Shipments (Monthly, Thousands of Barrels per Day)",
+    sec.axis = sec_axis(trans = ~.*1/.16, name = "Shipments (Monthly, Thousands of Barrels per Day)", breaks = seq(0, 600, by = 200))
+  )
+
+# Print the plot
+print(plot)
+
+```
+
+## Deliverable 3 
+
+
+```{r, out.width="95%",dpi=300,fig.align="center"}
+#your code here (I set it up to make a nice image for you)
+
+if(!file.exists("trans-mountain-throughput-and-capacity.csv"))
+    download.file(url = "https://www.cer-rec.gc.ca/open/energy/throughput-capacity/trans-mountain-throughput-and-capacity.csv",destfile = "trans-mountain-throughput-and-capacity.csv",mode="wb")
+
+Trans_data<-read.csv("trans-mountain-throughput-and-capacity.csv")%>%
+  clean_names()
+
+Trans_data <- Trans_data %>%
+  mutate(date = as.Date(paste(year, month, "01", sep = "-"), format = "%Y-%m-%d"))
+  
+# Filtering data by product and creating a key for faceting
+Trans_data <- Trans_data %>%
+  mutate(key_point_trade_type = interaction(key_point, trade_type, sep = " - "))
+
+# Prepare a data frame to hold the scales information for dynamic application
+scales_info <- data.frame(
+  key_point_trade_type = c("Burnaby - intracanada", "Sumas - export", "Westridge - export"),
+  left_scale_start = c(0, 0, 0),
+  left_scale_end = c(20, 40, 20),
+  right_scale_start = c(0, 0, 0),
+  right_scale_end = c(100, 250, 100)
+)
+
+# Create a function to apply scales based on key_point_trade_type
+apply_scales <- function(plot, scales_df, key_point_trade_type) {
+  scales_row <- scales_df[scales_df$key_point_trade_type == key_point_trade_type, ]
+  plot + 
+    scale_y_continuous(
+      name = "Shipments (Monthly, Thousands of Cubic Metres per Day)",
+      limits = c(scales_row$left_scale_start, scales_row$left_scale_end),
+      oob = scales::oob_squish
+    ) +
+    scale_y_continuous(
+      name = "Shipments (Monthly, Thousands of Barrels per Day)",
+      limits = c(scales_row$right_scale_start, scales_row$right_scale_end),
+      oob = scales::oob_squish,
+      sec.axis = sec_axis(~ . * 1/.16, name = "Shipments (Monthly, Thousands of Barrels per Day)")
+    )
+}
+
+# Create the plot
+plot <- ggplot(Trans_data, aes(x = date, y = throughput_1000_m3_d, fill = product)) +
+  geom_area(position = "stack") +
+  facet_wrap(~key_point_trade_type, ncol = 1, scales = "free_y") +
+  scale_fill_manual(values = c("domestic heavy" = "darkblue", "domestic light" = "lightblue", "refined petroleum products" = "grey")) +
+  labs(
+    title = "Trans-Mountain Pipeline Shipments by Product and Destination",
+    y = "Shipments (Monthly, Thousands of Cubic Metres per Day)"
+  ) +
+  theme(
+    
+    strip.text.x = element_text(size = 10),
+    axis.title.y = element_blank(), # Remove the right y-axis title
+    axis.text.y = element_blank(), # Remove the right y-axis text
+    axis.ticks.y = element_blank(), # Remove the right y-axis ticks
+    panel.grid.major = element_blank(), # Remove major grid lines
+    panel.grid.minor = element_blank(), # Remove minor grid lines
+    strip.background = element_blank() # Remove the background of the facet labels
+  ) +
+  scale_x_date(
+    breaks = seq(as.Date("2007-01-01"), max(Trans_data$date), by = "2 years"),
+    labels = date_format("%b \n%Y")
+  ) +
+  guides(fill = guide_legend(title = "Product")) +
+  theme_minimal()+
+  theme(legend.position = "bottom")
+# Print the plot
+print(plot)
+
+```
+
+
+
+## Deliverable 4 
+
+```{r, out.width="95%",dpi=300,fig.align="center"}
+#your code here (I set it up to make a nice image for you)
+if(!file.exists("canadian-crude-oil-exports-rail-monthly-data.xlsx"))
+    download.file(url = "https://www.cer-rec.gc.ca/en/data-analysis/energy-commodities/crude-oil-petroleum-products/statistics/canadian-crude-oil-exports-rail-monthly-data.xlsx", destfile = "canadian-crude-oil-exports-rail-monthly-data.xlsx",mode="wb")
+#read data in from the excel using read_excel
+
+oil_by_rail<-read_excel("canadian-crude-oil-exports-rail-monthly-data.xlsx", sheet = NULL, range = NULL, col_names = TRUE,
+                        col_types = NULL, na = "", trim_ws = TRUE, skip = 7)
+#fix the data format
+oil_by_rail <- oil_by_rail %>% clean_names () %>% select(-1)%>%slice(1:(n()-5))%>% #drop first column and the last 5 rows
+  fill(year) %>% #fill in the missing years
+  mutate(mth_num=match(month,month.name),#create numeric months, and then make dates
+    date=ymd(paste(year,"-",mth_num,"-1",sep = ""))) %>%
+  select(date, volume_m3_per_day, volume_bbl_per_day)
+
+# Convert the volumes to thousands for the graph
+oil_by_rail <- oil_by_rail %>%
+  mutate(
+    month_year = format(date, "%b %Y"), # format the date for the x-axis
+    volume_m3_day_thousands = volume_m3_per_day / 1000, # convert to thousands of cubic meters per day
+    volume_bbl_day_thousands = volume_bbl_per_day / 1000 # convert to thousands of barrels per day
+  )
+
+# Generating the plot
+ggplot(data = oil_by_rail, aes(x = date)) +
+  geom_line(aes(y = volume_m3_day_thousands), color = "darkgreen") +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "6 months") +
+  scale_y_continuous(
+    "Exports (Monthly, Thousands of Cubic Meters per Day)",
+    sec.axis = sec_axis(~ . * 1/.16, name = "Exports (Monthly, Thousands of Barrels per Day)")
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title = "Canadian Oil Exports by Rail", x = "Month\nYear")
+  
+
+# Printing the plot
+print(ggplot)
+
+```
+
+
+## Challenge Graph
+
+```{r, out.width="95%",dpi=300,fig.align="center"}
+#your code here (I set it up to make a nice image for you)
+if(!file.exists("assignment_2_data.csv"))
+    download.file(url = "https://econ366.aleach.ca/resources/assignment_2/assignment_2_data.csv",destfile = "assignment_2_data.csv",mode="wb")
+crude_data <- read_csv("assignment_2_data.csv")
+
+
+# Filter the data
+crude_data <- crude_data %>%
+  filter(grade_name %in% c("Heavy Sour", "Other Crude Grades"))
+
+# Create a factor for PADD with desired order
+crude_data$padd <- factor(crude_data$destination_name, levels = c(
+  "PADD1 (East Coast)", "PADD2 (Midwest)", "PADD3 (Gulf Coast)", "PADD4 (Rocky Mountain)", "PADD5 (West Coast)"
+))
+
+# Create a factor for grade_name
+crude_data$grade_name <- factor(crude_data$grade_name)
+
+# Create the plot
+plot <- ggplot(crude_data, aes(x = year(period), y = quantity, fill = origin_name)) +
+  geom_area(aes(group = interaction(grade_name, origin_name), color = origin_name), position = "identity") +
+  facet_grid(grade_name ~ padd, scales = "free", space = "free") +
+  scale_fill_manual(values = c("Canada" = "red", "ROW" = "darkblue")) +
+  scale_color_manual(values = c("Canada" = "red", "ROW" = "darkblue")) +
+  labs(
+    title = "US Crude Imports from Canada and the Rest of the World (ROW)\nImports by Refining PADD and Grade",
+    y = "Quantity",
+    x = "Year",
+    color = "Origin",
+    fill = "Origin"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.placement = "outside",
+    strip.text = element_text(hjust = 0.5, vjust = 1),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    panel.spacing = unit(0, "lines")
+  ) +
+  scale_y_continuous(
+    limits = c(0, 3000),
+    expand = c(0, 0),
+    breaks = seq(0, 3000, by = 500)
+  ) +
+  scale_x_continuous(
+    breaks = seq(2010, 2020, by = 5)
+  )
+
+# Print the plot
+print(plot)
+
+```
+
+
+
+
