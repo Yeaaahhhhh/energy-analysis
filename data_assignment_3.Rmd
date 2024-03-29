@@ -1,0 +1,296 @@
+---
+title: "Econ 366, Data Assignment 3"
+author: "Dexter Dai"
+editor: source
+---
+
+
+
+```{r chunks,echo=T,output=F, warning=FALSE,include=FALSE}
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      include=F)
+# include all your code, but not warnings or loading messages in your output
+```
+
+
+```{r packages-data,echo=T,output=F, warning=FALSE,include=T,message=F}
+
+library(kableExtra)
+library(readxl)
+library(janitor)
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(viridis)
+library(cansim)
+library(cowplot)
+library(gridExtra)
+library(dplyr)
+library(tidyr)
+
+```
+
+
+
+## Deliverable 2 Canadian graph
+
+```{r,out.width="95%",dpi=300,fig.align="center",echo=T,output=F, warning=FALSE,include=T,message=F,fig.width=8, fig.height=5}
+
+if(!file.exists("prov_elec.xlsx")) {
+  download.file(url = "https://econ366.aleach.ca/resources/assignment_3/prov_elec.xlsx",
+                destfile = "prov_elec.xlsx",
+                mode="wb")
+}
+
+# I manually clean the data (years, energy types)
+data <- read_excel("prov_elec.xlsx", sheet = "Table A13-1")
+
+energy_data <- data.frame( 
+  Year = as.numeric(data[2, 3:21]),
+  Coal = as.numeric(data[15, 3:21]) / 1000,
+  Natural_Gas = as.numeric(data[16, 3:21]) / 1000,
+  Other_Fuels = as.numeric(data[17, 3:21]) / 1000,
+  Nuclear = as.numeric(data[21, 3:21]) / 1000,
+  Hydro = as.numeric(data[22, 3:21]) / 1000,
+  Other_Renewables = as.numeric(data[23, 3:21]) / 1000,
+  Other_Generation = as.numeric(data[24, 3:21]) / 1000
+)
+
+energy_long <- pivot_longer(energy_data, cols = -Year, names_to = "Source", values_to = "Generation")
+
+energy_long$Year <- factor(energy_long$Year, levels = unique(energy_long$Year))
+
+energy_long$Source <- factor(
+  energy_long$Source, 
+  levels = c("Coal", "Natural_Gas", "Other_Fuels", "Nuclear", "Hydro", "Other_Renewables", "Other_Generation")
+)
+
+pp <- ggplot(energy_long, aes(x = Year, y = Generation, fill = Source)) +
+  geom_col() +
+   
+  scale_y_continuous(expand = c(0, 0),breaks=seq(0, 500, by=100)) +
+  scale_fill_manual(values = c("Coal" = "black", "Natural_Gas" = "#cccccc", "Other_Fuels" = "#666666", 
+                               "Nuclear" = "#af9f01", "Hydro" = "#0000ff", "Other_Renewables" = "#006400", 
+                               "Other_Generation" = "#add8e6"),
+                    labels = c("Coal", "Natural Gas", "Other Fuels", "Nuclear", "Hydro", "Other Renewables", "Other Generation")) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+        legend.position = "bottom",
+        legend.box = "horizontal",
+        legend.text = element_text(size = 10),
+        panel.background = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(title = "National Electricity Generation by Source",
+       x = "",           
+       y = "Electricity Generation (TWh)",
+       fill = "") +
+  guides(fill = guide_legend(title = "", ncol = 7, byrow = TRUE)) # Set ncol to the number of sources to have them in one line
+
+print(pp)
+```
+
+
+
+## Deliverable 2 Second Graph
+```{r,out.width="95%",dpi=300,fig.align="center",echo=T,output=F, warning=FALSE,include=T,message=F,fig.width=9, fig.height=5}
+if(!file.exists("prov_elec.xlsx")) {
+  download.file(url = "https://econ366.aleach.ca/resources/assignment_3/prov_elec.xlsx",
+                destfile = "prov_elec.xlsx",
+                mode="wb")
+}
+# I manually clean the data (years, energy types)
+data <- read_excel("prov_elec.xlsx", sheet = "Table A13-10")
+
+energy_data <- data.frame( 
+  Year = as.numeric(data[2, 3:21]),
+  Coal = as.numeric(data[15, 3:21]) / 1000,
+  Natural_Gas = as.numeric(data[16, 3:21]) / 1000,
+  Other_Fuels = as.numeric(data[17, 3:21]) / 1000,
+  Nuclear = as.numeric(data[18, 3:21]) / 1000,
+  Hydro = as.numeric(data[19, 3:21]) / 1000,
+  Other_Renewables = as.numeric(data[20, 3:21]) / 1000,
+  Other_Generation = as.numeric(data[21, 3:21]) / 1000
+)
+
+energy_long <- pivot_longer(energy_data, cols = -Year, names_to = "Source", values_to = "Generation")
+
+energy_long$Year <- factor(energy_long$Year, levels = unique(energy_long$Year))
+
+energy_long$Source <- factor(
+  energy_long$Source, 
+  levels = c("Coal", "Natural_Gas", "Other_Fuels", "Nuclear", "Hydro", "Other_Renewables", "Other_Generation")
+)
+
+pp <- ggplot(energy_long, aes(x = Year, y = Generation, fill = Source)) +
+  geom_col() +
+  scale_y_continuous(expand = c(0, 0),breaks=seq(0, 60, by=20)) +
+  scale_fill_manual(values = c("Coal" = "black", "Natural_Gas" = "#cccccc", "Other_Fuels" = "#666666", 
+                               "Nuclear" = "#af9f01", "Hydro" = "#0000ff", "Other_Renewables" = "#006400", 
+                               "Other_Generation" = "#add8e6"),
+                    labels = c("Coal", "Natural Gas", "Other Fuels", "Nuclear", "Hydro", "Other Renewables", "Other Generation")) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+        legend.position = "bottom",
+        legend.box = "horizontal", # This makes the legend items align horizontally
+        legend.text = element_text(size = 10),
+        panel.background = element_blank(),
+        axis.line = element_line(color = "black")) +
+  labs(title = "National Electricity Generation by Source, Alberta",
+       x = "",           
+       y = "Electricity Generation (TWh)",
+       fill = "") +
+  guides(fill = guide_legend(title = "", ncol = 7, byrow = TRUE)) # Set ncol to the number of sources to have them in one line
+
+# Print the plot
+print(pp)
+```
+## Deliverable 3
+
+```{r,out.width="95%",dpi=300,fig.align="center",echo=T,output=F, warning=FALSE,include=T,message=F}
+
+if(!file.exists("assignment_3_projections.csv"))
+    download.file(url = "https://econ366.aleach.ca/resources/assignment_3/assignment_3_projections.csv",destfile = "assignment_3_projections.csv",mode="wb")
+prevdata <- read_csv("assignment_3_projections.csv")
+
+filtered_data <- prevdata %>%
+  filter(scenario == "NIR 2022", prov != "Canada") %>%
+  mutate(prov = factor(prov, levels = c("BC", "AB", "SK", "MB", "ON", "QC", "ATL")))
+
+filtered_data$year <- as.numeric(as.character(filtered_data$year))
+
+province_colors <- c("BC" = "#151550", "AB" = "#30346f", "SK" = "#5a5a6f", 
+                     "MB" = "#787875", "ON" = "#a2a16e", "QC" = "#cdca4c", "ATL" = "#f2f600")
+
+gg <- ggplot(filtered_data, aes(x = year, y = emissions, fill = prov)) +
+  geom_area(stat = "identity", position = 'stack') +
+  scale_x_continuous(breaks = seq(2005, 2020, by = 5), limits = c(2005, 2020)) +
+  scale_y_continuous(breaks = seq(0, 125, by = 25), labels = comma) +
+  scale_fill_manual(values = province_colors) + 
+  labs(title = "Canadian Electricity Sector GHG Emissions by Province",
+       x = NULL,
+       y = "Annual Emissions (MtCO2e)") +
+  theme_minimal() +
+  theme(legend.position = "right",
+        legend.title = element_blank())
+
+print(gg)
+
+```
+
+
+## Challenge Graph of Deliverable 3
+
+```{r,out.width="95%",dpi=300,fig.align="center",echo=T,output=F, warning=FALSE,include=T,message=F}
+if(!file.exists("assignment_3_projections.csv"))
+    download.file(url = "https://econ366.aleach.ca/resources/assignment_3/assignment_3_projections.csv",destfile = "assignment_3_projections.csv",mode="wb")
+prodata <- read_csv("assignment_3_projections.csv")
+
+data_up_to_2020 <- prodata %>%
+  filter(scenario == "NIR 2022", prov != "Canada", prov != "Northwest Territories", year <= 2020) %>%
+  mutate(prov = factor(prov, levels = c("BC", "AB", "SK", "MB", "ON", "QC", "ATL")))
+
+data_from_2021 <- prodata %>%
+  filter(scenario == "2022 Reference Case", prov != "Canada", prov != "Northwest Territories", year > 2020) %>%
+  mutate(prov = factor(prov, levels = c("BC", "AB", "SK", "MB", "ON", "QC", "ATL")))
+
+all_data <- bind_rows(data_up_to_2020, data_from_2021) 
+
+all_data$year <- as.numeric(as.character(all_data$year))
+
+province_colors <- c("BC" = "#151550", "AB" = "#30346f", "SK" = "#5a5a6f", 
+                     "MB" = "#787875", "ON" = "#a2a16e", "QC" = "#cdca4c", "ATL" = "#f2f600")
+
+gg <- ggplot() +
+  geom_area(data = all_data, aes(x = year, y = emissions, fill = prov), color = "black", alpha = 0.3) +
+  #Without transparency
+  geom_area(data = data_up_to_2020, aes(x = year, y = emissions, fill = prov), color = "black", alpha = 1) +
+  geom_vline(xintercept = 2020, color = "black", linetype = "dashed") +
+  scale_x_continuous(breaks = seq(2005, 2035, by = 5), limits = c(2005, 2035)) +
+  scale_y_continuous(breaks = seq(0, 100, by = 20), labels = comma, limits = c(0, 125)) +
+  scale_fill_manual(values = province_colors) +
+  labs(title = "Canadian Electricity Sector GHG Emissions\n",
+       subtitle = "2022 National Inventory (1990-2020) levels and 2022 Reference Case projections (2020-2035, lighter fill)",
+       x = NULL,
+       y = "Annual Emissions (MtCO2e)") +
+  theme_minimal() +
+  theme(legend.position = "right",
+        legend.title = element_blank(),
+        plot.title = element_text(size = 16, margin = margin(b = -10, unit = "pt")),
+        plot.subtitle = element_text(size = 10, margin = margin(t = 0, unit = "pt")))
+
+print(gg)
+
+
+```
+
+
+## Deliverable 4
+
+
+```{r, out.width="95%", dpi=300, fig.align="center", fig.width=10, fig.height=5,echo=T,output=F, warning=FALSE,include=T,message=F}
+if(!file.exists("Small-DERS-Microgen-Monthly-by-Type.xlsx"))
+    download.file(url = "https://www.aeso.ca/assets/Uploads/market-and-system-reporting/Small-DERS-Microgen-Monthly-by-Type.xlsx",destfile = "Small-DERS-Microgen-Monthly-by-Type.xlsx",mode="wb")
+microdata <- read_excel("Small-DERS-Microgen-Monthly-by-Type.xlsx", sheet = "Microgen")
+
+microdata <- microdata %>% clean_names()
+
+microdata$month <- as.Date(microdata$month, format = "%Y-%m-%d %H:%M:%OS")
+
+microdata$year <- year(microdata$month)
+microdata$year_month <- format(microdata$month, "%Y-%m")
+
+solar_data <- microdata %>% filter(microgen_fuel_type == "Solar")
+other_data <- microdata %>% filter(microgen_fuel_type != "Solar")
+
+other_summary <- other_data %>%
+  group_by(year_month) %>%
+  summarize(
+    microgen_count = sum(microgen_count),
+    microgen_capacity_mw = sum(microgen_capacity_mw),
+    .groups = 'drop'
+  ) %>%
+  mutate(microgen_fuel_type = "Other",
+         month = as.Date(paste0(year_month, "-01")))
+
+combined_data <- bind_rows(solar_data, other_summary) %>%
+  mutate(microgen_fuel_type = factor(microgen_fuel_type, levels = c("Solar", "Other"))) %>%
+  arrange(month, microgen_fuel_type) 
+
+data_long <- combined_data %>%
+  pivot_longer(cols = c(microgen_count, microgen_capacity_mw), names_to = "measure", values_to = "value")
+
+custom_theme <- theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    panel.background = element_blank(),
+    axis.line = element_line(color = "black"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    axis.ticks.x = element_line(color = "black"),
+    axis.ticks.y = element_line(color = "black"))
+
+# Microgen Capacity
+p1 <- ggplot(data_long %>% filter(measure == "microgen_capacity_mw"), aes(x = month, y = value, fill = microgen_fuel_type)) +
+  geom_area() +
+  scale_x_date(expand = c(0, 0),date_breaks = "1 year", date_labels = "%Y", limits = as.Date(c('2016-01-01', '2023-11-01'))) +
+  scale_y_continuous(expand = c(0, 0),limits = c(0, 210), breaks = seq(0, 200, by = 50)) +
+  scale_fill_manual(values = c("Solar" = "#ffdb05", "Other" = "#007c41")) +
+  custom_theme +
+  labs(x = NULL, y = "Microgen Capacity (MW)", fill = "")
+
+# Number of Sites
+p2 <- ggplot(data_long %>% filter(measure == "microgen_count"), aes(x = month, y = value, fill = microgen_fuel_type)) +
+  geom_area() +
+  scale_x_date(expand = c(0, 0),date_breaks = "1 year", date_labels = "%Y",
+               limits = as.Date(c('2016-01-01', '2023-11-01'))) +
+  scale_y_continuous(expand = c(0, 0),limits = c(0, 16500), breaks = seq(0, 15000, by = 5000)) +
+  scale_fill_manual(values = c("Solar" = "#ffdb05", "Other" = "#007c41")) +
+  custom_theme +
+  labs(x = NULL, y = "Microgen Sites (#)", fill = "")
+
+grid.arrange(p1, p2, ncol = 2)
+
+
+```
+
